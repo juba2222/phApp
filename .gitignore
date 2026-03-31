@@ -1,0 +1,23 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-versions
+.idea/
+.vscode/
+*.iml
+
+# Generated
+**/*.g.dart
+**/*.freezed.dart
+
+# iOS/Android
+android/.gradle
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Secrets
+.env
