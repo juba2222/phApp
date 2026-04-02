@@ -26,25 +26,33 @@ class PharmaFixApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PharmaFix POS',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00C853),
-          brightness: Brightness.light,
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AppDatabase>.value(value: db),
+        RepositoryProvider<InvoiceDao>(create: (context) => InvoiceDao(db)),
+        RepositoryProvider<BatchDao>(create: (context) => BatchDao(db)),
+        RepositoryProvider<CustomerDao>(create: (context) => CustomerDao(db)),
+      ],
+      child: MaterialApp(
+        title: 'PharmaFix POS',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF00C853),
+            brightness: Brightness.light,
+          ),
+          useMaterial3: true,
+          fontFamily: 'OpenSans',
         ),
-        useMaterial3: true,
-        fontFamily: 'OpenSans', // Common arabic-friendly font
-      ),
-      home: BlocProvider(
-        create: (_) => SalesCubit(
-          db: db,
-          batchDao: BatchDao(db),
-          invoiceDao: InvoiceDao(db),
-          customerDao: CustomerDao(db),
+        home: BlocProvider(
+          create: (context) => SalesCubit(
+            db: context.read<AppDatabase>(),
+            batchDao: context.read<BatchDao>(),
+            invoiceDao: context.read<InvoiceDao>(),
+            customerDao: context.read<CustomerDao>(),
+          ),
+          child: const PosScreen(),
         ),
-        child: const PosScreen(),
       ),
     );
   }

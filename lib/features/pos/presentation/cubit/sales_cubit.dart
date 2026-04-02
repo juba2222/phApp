@@ -224,6 +224,7 @@ class SalesCubit extends Cubit<SalesState> {
                 batchId: Value(item.batchId),
                 qty: Value(item.qty),
                 priceAtSale: Value(item.priceAtSale),
+                suggestedPrice: Value(item.suggestedPrice),
               ))
           .toList();
 
@@ -244,7 +245,7 @@ class SalesCubit extends Cubit<SalesState> {
         );
       }
 
-      await _invoiceDao.executeAtomicSale(
+      final invoiceId = await _invoiceDao.executeAtomicSale(
         invoiceData: invoiceData,
         items: itemsData,
         batchUpdates: batchUpdates,
@@ -252,7 +253,7 @@ class SalesCubit extends Cubit<SalesState> {
       );
 
       _cart.clear();
-      emit(SalesSuccess(invoiceId: DateTime.now().millisecondsSinceEpoch));
+      emit(SalesSuccess(invoiceId: invoiceId));
     } catch (e) {
       emit(SalesError(message: 'فشل الحفظ: $e'));
     }

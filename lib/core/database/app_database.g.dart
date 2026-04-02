@@ -1306,9 +1306,15 @@ class $InvoiceItemsTable extends InvoiceItems
   late final GeneratedColumn<double> priceAtSale = GeneratedColumn<double>(
       'price_at_sale', aliasedName, false,
       type: DriftSqlType.double, requiredDuringInsert: true);
+  static const VerificationMeta _suggestedPriceMeta =
+      const VerificationMeta('suggestedPrice');
+  @override
+  late final GeneratedColumn<double> suggestedPrice = GeneratedColumn<double>(
+      'suggested_price', aliasedName, false,
+      type: DriftSqlType.double, requiredDuringInsert: true);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, invoiceId, productId, batchId, qty, priceAtSale];
+      [id, invoiceId, productId, batchId, qty, priceAtSale, suggestedPrice];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1354,6 +1360,14 @@ class $InvoiceItemsTable extends InvoiceItems
     } else if (isInserting) {
       context.missing(_priceAtSaleMeta);
     }
+    if (data.containsKey('suggested_price')) {
+      context.handle(
+          _suggestedPriceMeta,
+          suggestedPrice.isAcceptableOrUnknown(
+              data['suggested_price']!, _suggestedPriceMeta));
+    } else if (isInserting) {
+      context.missing(_suggestedPriceMeta);
+    }
     return context;
   }
 
@@ -1375,6 +1389,8 @@ class $InvoiceItemsTable extends InvoiceItems
           .read(DriftSqlType.int, data['${effectivePrefix}qty'])!,
       priceAtSale: attachedDatabase.typeMapping
           .read(DriftSqlType.double, data['${effectivePrefix}price_at_sale'])!,
+      suggestedPrice: attachedDatabase.typeMapping.read(
+          DriftSqlType.double, data['${effectivePrefix}suggested_price'])!,
     );
   }
 
@@ -1391,13 +1407,15 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
   final int batchId;
   final int qty;
   final double priceAtSale;
+  final double suggestedPrice;
   const InvoiceItem(
       {required this.id,
       required this.invoiceId,
       required this.productId,
       required this.batchId,
       required this.qty,
-      required this.priceAtSale});
+      required this.priceAtSale,
+      required this.suggestedPrice});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1407,6 +1425,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
     map['batch_id'] = Variable<int>(batchId);
     map['qty'] = Variable<int>(qty);
     map['price_at_sale'] = Variable<double>(priceAtSale);
+    map['suggested_price'] = Variable<double>(suggestedPrice);
     return map;
   }
 
@@ -1418,6 +1437,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       batchId: Value(batchId),
       qty: Value(qty),
       priceAtSale: Value(priceAtSale),
+      suggestedPrice: Value(suggestedPrice),
     );
   }
 
@@ -1431,6 +1451,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       batchId: serializer.fromJson<int>(json['batchId']),
       qty: serializer.fromJson<int>(json['qty']),
       priceAtSale: serializer.fromJson<double>(json['priceAtSale']),
+      suggestedPrice: serializer.fromJson<double>(json['suggestedPrice']),
     );
   }
   @override
@@ -1443,6 +1464,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       'batchId': serializer.toJson<int>(batchId),
       'qty': serializer.toJson<int>(qty),
       'priceAtSale': serializer.toJson<double>(priceAtSale),
+      'suggestedPrice': serializer.toJson<double>(suggestedPrice),
     };
   }
 
@@ -1452,7 +1474,8 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           int? productId,
           int? batchId,
           int? qty,
-          double? priceAtSale}) =>
+          double? priceAtSale,
+          double? suggestedPrice}) =>
       InvoiceItem(
         id: id ?? this.id,
         invoiceId: invoiceId ?? this.invoiceId,
@@ -1460,6 +1483,7 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
         batchId: batchId ?? this.batchId,
         qty: qty ?? this.qty,
         priceAtSale: priceAtSale ?? this.priceAtSale,
+        suggestedPrice: suggestedPrice ?? this.suggestedPrice,
       );
   InvoiceItem copyWithCompanion(InvoiceItemsCompanion data) {
     return InvoiceItem(
@@ -1470,6 +1494,9 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
       qty: data.qty.present ? data.qty.value : this.qty,
       priceAtSale:
           data.priceAtSale.present ? data.priceAtSale.value : this.priceAtSale,
+      suggestedPrice: data.suggestedPrice.present
+          ? data.suggestedPrice.value
+          : this.suggestedPrice,
     );
   }
 
@@ -1481,14 +1508,15 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           ..write('productId: $productId, ')
           ..write('batchId: $batchId, ')
           ..write('qty: $qty, ')
-          ..write('priceAtSale: $priceAtSale')
+          ..write('priceAtSale: $priceAtSale, ')
+          ..write('suggestedPrice: $suggestedPrice')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, invoiceId, productId, batchId, qty, priceAtSale);
+  int get hashCode => Object.hash(
+      id, invoiceId, productId, batchId, qty, priceAtSale, suggestedPrice);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1498,7 +1526,8 @@ class InvoiceItem extends DataClass implements Insertable<InvoiceItem> {
           other.productId == this.productId &&
           other.batchId == this.batchId &&
           other.qty == this.qty &&
-          other.priceAtSale == this.priceAtSale);
+          other.priceAtSale == this.priceAtSale &&
+          other.suggestedPrice == this.suggestedPrice);
 }
 
 class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
@@ -1508,6 +1537,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
   final Value<int> batchId;
   final Value<int> qty;
   final Value<double> priceAtSale;
+  final Value<double> suggestedPrice;
   const InvoiceItemsCompanion({
     this.id = const Value.absent(),
     this.invoiceId = const Value.absent(),
@@ -1515,6 +1545,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     this.batchId = const Value.absent(),
     this.qty = const Value.absent(),
     this.priceAtSale = const Value.absent(),
+    this.suggestedPrice = const Value.absent(),
   });
   InvoiceItemsCompanion.insert({
     this.id = const Value.absent(),
@@ -1523,11 +1554,13 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     required int batchId,
     required int qty,
     required double priceAtSale,
+    required double suggestedPrice,
   })  : invoiceId = Value(invoiceId),
         productId = Value(productId),
         batchId = Value(batchId),
         qty = Value(qty),
-        priceAtSale = Value(priceAtSale);
+        priceAtSale = Value(priceAtSale),
+        suggestedPrice = Value(suggestedPrice);
   static Insertable<InvoiceItem> custom({
     Expression<int>? id,
     Expression<int>? invoiceId,
@@ -1535,6 +1568,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     Expression<int>? batchId,
     Expression<int>? qty,
     Expression<double>? priceAtSale,
+    Expression<double>? suggestedPrice,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1543,6 +1577,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       if (batchId != null) 'batch_id': batchId,
       if (qty != null) 'qty': qty,
       if (priceAtSale != null) 'price_at_sale': priceAtSale,
+      if (suggestedPrice != null) 'suggested_price': suggestedPrice,
     });
   }
 
@@ -1552,7 +1587,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       Value<int>? productId,
       Value<int>? batchId,
       Value<int>? qty,
-      Value<double>? priceAtSale}) {
+      Value<double>? priceAtSale,
+      Value<double>? suggestedPrice}) {
     return InvoiceItemsCompanion(
       id: id ?? this.id,
       invoiceId: invoiceId ?? this.invoiceId,
@@ -1560,6 +1596,7 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
       batchId: batchId ?? this.batchId,
       qty: qty ?? this.qty,
       priceAtSale: priceAtSale ?? this.priceAtSale,
+      suggestedPrice: suggestedPrice ?? this.suggestedPrice,
     );
   }
 
@@ -1584,6 +1621,9 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
     if (priceAtSale.present) {
       map['price_at_sale'] = Variable<double>(priceAtSale.value);
     }
+    if (suggestedPrice.present) {
+      map['suggested_price'] = Variable<double>(suggestedPrice.value);
+    }
     return map;
   }
 
@@ -1595,7 +1635,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItem> {
           ..write('productId: $productId, ')
           ..write('batchId: $batchId, ')
           ..write('qty: $qty, ')
-          ..write('priceAtSale: $priceAtSale')
+          ..write('priceAtSale: $priceAtSale, ')
+          ..write('suggestedPrice: $suggestedPrice')
           ..write(')'))
         .toString();
   }
@@ -3918,6 +3959,7 @@ typedef $$InvoiceItemsTableCreateCompanionBuilder = InvoiceItemsCompanion
   required int batchId,
   required int qty,
   required double priceAtSale,
+  required double suggestedPrice,
 });
 typedef $$InvoiceItemsTableUpdateCompanionBuilder = InvoiceItemsCompanion
     Function({
@@ -3927,6 +3969,7 @@ typedef $$InvoiceItemsTableUpdateCompanionBuilder = InvoiceItemsCompanion
   Value<int> batchId,
   Value<int> qty,
   Value<double> priceAtSale,
+  Value<double> suggestedPrice,
 });
 
 final class $$InvoiceItemsTableReferences
@@ -3996,6 +4039,10 @@ class $$InvoiceItemsTableFilterComposer
 
   ColumnFilters<double> get priceAtSale => $composableBuilder(
       column: $table.priceAtSale, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get suggestedPrice => $composableBuilder(
+      column: $table.suggestedPrice,
+      builder: (column) => ColumnFilters(column));
 
   $$InvoicesTableFilterComposer get invoiceId {
     final $$InvoicesTableFilterComposer composer = $composerBuilder(
@@ -4076,6 +4123,10 @@ class $$InvoiceItemsTableOrderingComposer
   ColumnOrderings<double> get priceAtSale => $composableBuilder(
       column: $table.priceAtSale, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<double> get suggestedPrice => $composableBuilder(
+      column: $table.suggestedPrice,
+      builder: (column) => ColumnOrderings(column));
+
   $$InvoicesTableOrderingComposer get invoiceId {
     final $$InvoicesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -4154,6 +4205,9 @@ class $$InvoiceItemsTableAnnotationComposer
 
   GeneratedColumn<double> get priceAtSale => $composableBuilder(
       column: $table.priceAtSale, builder: (column) => column);
+
+  GeneratedColumn<double> get suggestedPrice => $composableBuilder(
+      column: $table.suggestedPrice, builder: (column) => column);
 
   $$InvoicesTableAnnotationComposer get invoiceId {
     final $$InvoicesTableAnnotationComposer composer = $composerBuilder(
@@ -4245,6 +4299,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             Value<int> batchId = const Value.absent(),
             Value<int> qty = const Value.absent(),
             Value<double> priceAtSale = const Value.absent(),
+            Value<double> suggestedPrice = const Value.absent(),
           }) =>
               InvoiceItemsCompanion(
             id: id,
@@ -4253,6 +4308,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             batchId: batchId,
             qty: qty,
             priceAtSale: priceAtSale,
+            suggestedPrice: suggestedPrice,
           ),
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
@@ -4261,6 +4317,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             required int batchId,
             required int qty,
             required double priceAtSale,
+            required double suggestedPrice,
           }) =>
               InvoiceItemsCompanion.insert(
             id: id,
@@ -4269,6 +4326,7 @@ class $$InvoiceItemsTableTableManager extends RootTableManager<
             batchId: batchId,
             qty: qty,
             priceAtSale: priceAtSale,
+            suggestedPrice: suggestedPrice,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

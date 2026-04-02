@@ -1,17 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../cubit/sales_cubit.dart';
+import '../cubit/invoice_history_cubit.dart';
+import '../widgets/invoice_detail_dialog.dart';
 import '../../../../core/database/app_database.dart';
+import '../../../../core/database/daos/invoice_dao.dart';
 
-class PosScreen extends StatefulWidget {
+class PosScreen extends StatelessWidget {
   const PosScreen({super.key});
 
   @override
-  State<PosScreen> createState() => _PosScreenState();
+  Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => InvoiceHistoryCubit(
+            db: context.read<AppDatabase>(),
+            invoiceDao: context.read<InvoiceDao>(),
+          ),
+        ),
+      ],
+      child: const _PosScreenInternal(),
+    );
+  }
 }
 
-class _PosScreenState extends State<PosScreen> {
+class _PosScreenInternal extends StatefulWidget {
+  const _PosScreenInternal();
+
+  @override
+  State<_PosScreenInternal> createState() => _PosScreenInternalState();
+}
+
+class _PosScreenInternalState extends State<_PosScreenInternal> {
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   List<Product> _searchResults = [];
@@ -56,8 +78,6 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -68,6 +88,11 @@ class _PosScreenState extends State<PosScreen> {
         elevation: 0,
         actions: [
           IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'السجل',
+            onPressed: () => _showHistoryBottomSheet(context),
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'بيع جديد',
             onPressed: () => context.read<SalesCubit>().resetSale(),
@@ -76,7 +101,6 @@ class _PosScreenState extends State<PosScreen> {
       ),
       body: Column(
         children: [
-          // ── Product Search Input ──────────────────
           _SearchInputSection(
             controller: _searchController,
             focusNode: _searchFocus,
@@ -85,8 +109,6 @@ class _PosScreenState extends State<PosScreen> {
             results: _searchResults,
             onProductSelected: _onProductSelected,
           ),
-
-          // ── Cart List ───────────────────────────────
           Expanded(
             child: BlocConsumer<SalesCubit, SalesState>(
               listener: (context, state) {
@@ -102,10 +124,15 @@ class _PosScreenState extends State<PosScreen> {
                 }
                 if (state is SalesSuccess) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✅ تمت عملية البيع بنجاح'),
-                      backgroundColor: Color(0xFF00C853),
+                    SnackBar(
+                      content: const Text('✅ تمت عملية البيع بنجاح'),
+                      backgroundColor: const Color(0xFF00C853),
                       behavior: SnackBarBehavior.floating,
+                      action: SnackBarAction(
+                        label: 'عرض الفاتورة',
+                        textColor: Colors.white,
+                        onPressed: () => _showInvoiceDetails(context, state.invoiceId),
+                      ),
                     ),
                   );
                 }
@@ -155,10 +182,77 @@ class _PosScreenState extends State<PosScreen> {
               },
             ),
           ),
-
-          // ── Invoice Summary & Checkout ───────────────
-          _CheckoutBar(),
+          const _CheckoutBar(),
         ],
+      ),
+    );
+  }
+
+  void _showInvoiceDetails(BuildContext context, int id) {
+    showDialog(
+      context: context,
+      builder: (_) => BlocProvider.value(
+        value: context.read<InvoiceHistoryCubit>(),
+        child: InvoiceDetailDialog(invoiceId: id),
+      ),
+    );
+  }
+
+  void _showHistoryBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => BlocProvider.value(
+        value: context.read<InvoiceHistoryCubit>()..loadRecentInvoices(),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.7,
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+              const Padding(
+                padding: EdgeInsets.all(24.0),
+                child: Text('سجل الفواتير الأخيرة', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: BlocBuilder<InvoiceHistoryCubit, InvoiceHistoryState>(
+                  builder: (context, state) {
+                    if (state is InvoiceHistoryLoading) return const Center(child: CircularProgressIndicator());
+                    if (state is InvoiceHistoryLoaded) {
+                      if (state.recentInvoices.isEmpty) return const Center(child: Text('لا توجد فواتير بعد'));
+                      return ListView.builder(
+                        itemCount: state.recentInvoices.length,
+                        itemBuilder: (context, index) {
+                          final inv = state.recentInvoices[index];
+                          final isCanceled = inv.status == 'CANCELED';
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: isCanceled ? Colors.red.shade50 : Colors.green.shade50,
+                              child: Icon(Icons.receipt_long, color: isCanceled ? Colors.red : Colors.green),
+                            ),
+                            title: Text('Invoice #${inv.id}'),
+                            subtitle: Text(DateFormat('yyyy-MM-dd HH:mm').format(inv.createdAt)),
+                            trailing: Text('${inv.totalAmount} د.ع', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _showInvoiceDetails(context, inv.id);
+                            },
+                          );
+                        },
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

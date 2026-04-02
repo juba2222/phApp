@@ -26,7 +26,25 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        // Since we are in early dev, we'll just drop and recreate everything
+        // In production, we would use m.addColumn(invoiceItems, invoiceItems.suggestedPrice)
+        for (final table in allTables) {
+          await m.deleteTable(table.actualTableName);
+          await m.createTable(table);
+        }
+      }
+    },
+    beforeOpen: (details) async {
+      // Logic for foreign keys can go here
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 }
 
 // Opens SQLite database from the device's document directory (Offline-First)
