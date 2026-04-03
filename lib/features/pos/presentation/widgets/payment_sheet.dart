@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/database/app_database.dart';
 import '../cubit/sales_cubit.dart';
-import '../cubit/sales_state.dart';
 
 class PaymentSheet extends StatefulWidget {
   const PaymentSheet({super.key});
@@ -62,7 +61,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final total = context.select((SalesCubit c) => 
+    final total = context.select<SalesCubit, double>((c) => 
         (c.state is SalesActive) ? (c.state as SalesActive).total 
         : (c.state is SalesPaymentPending) ? (c.state as SalesPaymentPending).total : 0.0);
 

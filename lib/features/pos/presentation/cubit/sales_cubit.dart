@@ -1,3 +1,5 @@
+library sales_cubit;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:drift/drift.dart' hide Batch;
 

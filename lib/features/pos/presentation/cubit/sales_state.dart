@@ -1,4 +1,4 @@
-part of 'sales_cubit.dart';
+part of sales_cubit;
 
 // Represents a single item in the active invoice draft (may span multiple batches)
 class CartItem {

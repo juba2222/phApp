@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/sales_cubit.dart';
-import '../cubit/sales_state.dart';
 
 class CartItemTile extends StatelessWidget {
   final CartItem item;
