@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../cubit/sales_cubit.dart';
 import '../cubit/invoice_history_cubit.dart';
 import '../widgets/invoice_detail_dialog.dart';
+import '../widgets/pos_scanner_dialog.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/database/daos/invoice_dao.dart';
 
@@ -108,6 +109,7 @@ class _PosScreenInternalState extends State<_PosScreenInternal> {
             onSubmit: _onSearchSubmit,
             results: _searchResults,
             onProductSelected: _onProductSelected,
+            onScanPressed: () => _openScanner(context),
           ),
           Expanded(
             child: BlocConsumer<SalesCubit, SalesState>(
@@ -168,6 +170,8 @@ class _PosScreenInternalState extends State<_PosScreenInternal> {
                         SizedBox(height: 12),
                         Text('امسح باركود المنتج للبدء',
                             style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 16)),
+                        SizedBox(height: 16),
+                        _ScannerShortcutButton(),
                       ],
                     ),
                   );
@@ -186,6 +190,16 @@ class _PosScreenInternalState extends State<_PosScreenInternal> {
         ],
       ),
     );
+  }
+
+  void _openScanner(BuildContext context) async {
+    final code = await showDialog<String>(
+      context: context,
+      builder: (_) => const PosScannerDialog(),
+    );
+    if (code != null && context.mounted) {
+      context.read<SalesCubit>().addProductByBarcode(code, 1);
+    }
   }
 
   void _showInvoiceDetails(BuildContext context, int id) {
@@ -268,6 +282,7 @@ class _SearchInputSection extends StatelessWidget {
   final VoidCallback onSubmit;
   final List<Product> results;
   final Function(Product) onProductSelected;
+  final VoidCallback onScanPressed;
 
   const _SearchInputSection({
     required this.controller,
@@ -276,6 +291,7 @@ class _SearchInputSection extends StatelessWidget {
     required this.onSubmit,
     required this.results,
     required this.onProductSelected,
+    required this.onScanPressed,
   });
 
   @override
@@ -302,6 +318,10 @@ class _SearchInputSection extends StatelessWidget {
                     filled: true,
                     fillColor: const Color(0xFFF0F4F0),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.qr_code_scanner, color: Color(0xFF00C853)),
+                      onPressed: onScanPressed,
+                    ),
                   ),
                   onChanged: onChanged,
                   onSubmitted: (_) => onSubmit(),
@@ -934,3 +954,28 @@ class _PaymentOption extends StatelessWidget {
     );
   }
 }
+
+class _ScannerShortcutButton extends StatelessWidget {
+  const _ScannerShortcutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        final state = context.findAncestorStateOfType<_PosScreenInternalState>();
+        if (state != null) {
+          state._openScanner(context);
+        }
+      },
+      icon: const Icon(Icons.qr_code_scanner),
+      label: const Text('فتح الكاميرا للمسح'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+}
+

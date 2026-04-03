@@ -1,0 +1,24 @@
+
+class _ScannerShortcutButton extends StatelessWidget {
+  const _ScannerShortcutButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton.icon(
+      onPressed: () {
+        final state = context.findAncestorStateOfType<_PosScreenInternalState>();
+        if (state != null) {
+          state._openScanner(context);
+        }
+      },
+      icon: const Icon(Icons.qr_code_scanner),
+      label: const Text('فتح الكاميرا للمسح'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+    );
+  }
+}
