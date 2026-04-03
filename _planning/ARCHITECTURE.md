@@ -25,128 +25,94 @@ This document is the **OFFICIAL CONSTITUTION** and architecture guide for **Phar
 
 ---
 
-## 2. Architecture Rules
+## 2. Structural Architecture (Clean Architecture)
 
-### 2.1 Modular Design
-- The system MUST be divided into independent modules:
-  - POS
-  - Inventory
-  - Suppliers
-  - Accounting
-  - Reports
+We follow a strict **Clean Architecture** pattern to ensure the app is testable, maintainable, and independent of external agencies (like the database or UI library).
 
-### 2.2 Clean Architecture
-- Business logic MUST be separated from UI and infrastructure.
-- No direct dependency from UI to database.
+### 2.1 The Layers
+- **Data Layer (Outside)**:
+  - Responsible for data retrieval from APIs or Local Database (Drift).
+  - Contains: DataSources (Local/Remote), Repository Implementations, and DTOs (Models).
+- **Domain Layer (Center - Pure Dart)**:
+  - The business logic "core". No Flutter dependencies allowed here.
+  - Contains: Entities (Plain Data Classes), Use Cases (Individual business actions), and Repository Interfaces.
+- **Presentation Layer (Inside)**:
+  - The Flutter UI and State Management.
+  - Contains: Screens, Widgets (Atomic UI), and State Managers (Cubit/BLoC/Riverpod).
 
-### 2.3 API Standards
-- All APIs MUST be RESTful and versioned.
-- All endpoints MUST be authenticated.
+### 2.2 Feature-First Structure
+Projects are structured by **Features**, not by file type. This keeps related code together.
+```text
+lib/
+ ├── features/
+ │   ├── auth/
+ │   │   ├── data/
+ │   │   ├── domain/
+ │   │   └── presentation/ (screens & widgets)
+ │   └── pos/
+ ├── core/ (Shared components: theme, colors, network_info, etc.)
+ └── main.dart
+```
 
 ---
 
-## 3. Data Integrity & Safety
+## 3. Flutter Implementation Standards
 
-### 3.1 Transaction Safety
-- All financial operations MUST be atomic.
+### 3.1 State Management
+- **Primary Options**: **BLoC/Cubit** or **Riverpod**.
+- **STRICT RULE**: The `build` method is for UI declaration ONLY.
+- **No Logic in UI**: Calculations, data fetching, or input validation MUST happen in the Controller/BLoC layer.
+
+### 3.2 Atomic Widgets (The "100-Line" Rule)
+- To prevent "Code Jungles", widgets MUST be small.
+- **Limit**: If a Widget exceeds 60-100 lines, extract its parts into separate files.
+- Feature-specific widgets stay in `feature/presentation/widgets/`.
+- Reusable system widgets go to `core/widgets/`.
+
+### 3.3 Data Integrity & Models
+- **No Maps**: Use strictly typed Classes/Entities for all data.
+- **Code Generation**: Use `freezed` or `json_serializable` for boilerplate reduction.
+- **Repositories**: Acts as a buffer between UI and Data. UI should never know if data comes from SQLite or a REST API.
+
+### 3.4 Logic Isolation
+- **Extensions**: Use Dart Extensions for common formatting (e.g., `dateTime.toRelative()`).
+- **Mixins**: Use Mixins for shared behavior (e.g., `LoadingStateMixin`).
+- **DI**: Use `get_it` for Dependency Injection to decouple classes.
+
+---
+
+## 4. Coding Standards & Quality
+
+### 4.1 Clean Code
+- **Naming**: Variables and functions must have self-describing names.
+- **Comments**: Describe the **WHY**, not the **WHAT**.
+- **Linting**: Maintain a strict `analysis_options.yaml`. Fix all warnings immediately.
+
+### 4.2 Transaction Safety
+- All financial operations MUST be atomic (wrapped in database transactions).
 - No partial writes are allowed.
 
-### 3.2 Auditability
-- Every critical action MUST be logged:
-  - Sales
-  - Purchases
-  - Edits
-  - Deletes
-
-### 3.3 Backup & Recovery
-- The system MUST support automatic backup.
-- Recovery MUST be possible without data loss.
+### 4.3 Auditability
+- Every critical action MUST be logged (Sales, Purchases, Edits, Deletes).
 
 ---
 
-## 4. Inventory Rules
+## 5. Roles & Permissions
 
-### 4.1 Expiry Management
-- Expiry tracking is MANDATORY for all products.
-- System MUST alert before expiration.
-
-### 4.2 Stock Accuracy
-- Stock levels MUST always reflect real inventory.
-- Negative stock is NOT allowed unless explicitly permitted.
-
-### 4.3 Barcode-First System
-- All products SHOULD support barcode scanning.
-- Manual entry MUST be fallback only.
+- **Admin**: Full access to financial history, settings, and stock management.
+- **Cashier**: Restricted to Sales flow. Cannot edit finalized invoices or sensitive stock data.
 
 ---
 
-## 5. Financial Rules
+## 6. Constraints
 
-### 5.1 Supplier Accounting
-- Each supplier MUST have:
-  - Balance
-  - Debt tracking
-  - Payment history
-
-### 5.2 Sales Integrity
-- Every sale MUST generate a record and invoice.
-- Deleting financial records MUST be restricted.
+- No feature may violate the **Offline-First** principle.
+- No feature may bypass **Audit Logging**.
+- No UI may compromise **POS Performance** (Instant responsiveness).
 
 ---
 
-## 6. Roles & Permissions
-
-### 6.1 Role-Based Access Control
-- System MUST support roles:
-  - Admin
-  - Cashier
-
-### 6.2 Permissions
-- Cashier:
-  - Can sell
-  - Cannot edit financial data
-- Admin:
-  - Full access
-
----
-
-## 7. UX Rules
-
-### 7.1 Speed is Priority
-- Selling flow MUST be achievable in ≤ 3 steps.
-
-### 7.2 Error Prevention
-- System MUST prevent:
-  - Selling expired products
-  - Selling out-of-stock items
-
----
-
-## 8. Testing & Quality
-
-### 8.1 Test Coverage
-- Critical modules MUST have tests:
-  - POS
-  - Inventory
-  - Accounting
-
-### 8.2 Validation
-- All inputs MUST be validated at all layers.
-
----
-
-## 9. Constraints
-
-- No feature may violate offline-first principle.
-- No feature may bypass audit logging.
-- No feature may compromise performance in POS flow.
-
----
-
-## 10. Evolution Rules
+## 7. Evolution Rules
 
 - Constitution changes MUST be rare and justified.
-- Any change MUST evaluate impact on:
-  - Data integrity
-  - Performance
-  - Offline capability
+- Every change MUST be evaluated against: Data Integrity, Performance, and Offline capability.
