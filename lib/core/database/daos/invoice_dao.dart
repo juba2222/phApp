@@ -10,7 +10,7 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
 
   /// ATOMIC TRANSACTION: Finalize a sale (SPEC_003 §1.4 - Constitution §3.1).
   /// If any step fails, the ENTIRE transaction is rolled back.
-  Future<void> executeAtomicSale({
+  Future<int> executeAtomicSale({
     required InvoicesCompanion invoiceData,
     required List<InvoiceItemsCompanion> items,
     required List<BatchesCompanion> batchUpdates,
@@ -58,40 +58,98 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
           totalDebt: cTable.totalDebt + Variable(unpaid),
         ));
       }
+      
+      return invoiceId;
     });
   }
 
-  /// Cancel an invoice: Set status to CANCELED & restore batch quantities.
+  /// Retrieves an invoice with its items, products, and customer details.
+  Future<DetailedInvoice> getInvoiceWithDetails(int invoiceId) async {
+    final invoice = await (select(db.invoices)..where((t) => t.id.equals(invoiceId))).getSingle();
+    
+    final customer = invoice.customerId != null 
+      ? await (select(db.customers)..where((t) => t.id.equals(invoice.customerId!))).getSingleOrNull()
+      : null;
+
+    final itemsQuery = select(db.invoiceItems).join([
+      innerJoin(db.products, db.products.id.equalsExp(db.invoiceItems.productId)),
+      innerJoin(db.batches, db.batches.id.equalsExp(db.invoiceItems.batchId)),
+    ]);
+    itemsQuery.where(db.invoiceItems.invoiceId.equals(invoiceId));
+    
+    final itemsRows = await itemsQuery.get();
+    final items = itemsRows.map((row) {
+      return DetailedInvoiceItem(
+        item: row.readTable(db.invoiceItems),
+        product: row.readTable(db.products),
+        batch: row.readTable(db.batches),
+      );
+    }).toList();
+
+    final debt = await (select(db.debts)..where((t) => t.invoiceId.equals(invoiceId))).getSingleOrNull();
+
+    return DetailedInvoice(
+      invoice: invoice,
+      customer: customer,
+      items: items,
+      debt: debt,
+    );
+  }
+
+  /// Cancel an invoice: Set status to CANCELED, restore batch quantities, and reverse debts.
   Future<void> cancelInvoice(int invoiceId) {
     return db.transaction(() async {
-      // Step 1: Get all Items from this Invoice
-      final items = await (select(db.invoiceItems)
-            ..where((i) => i.invoiceId.equals(invoiceId)))
-          .get();
+      final invoice = await (select(db.invoices)..where((t) => t.id.equals(invoiceId))).getSingle();
+      if (invoice.status == 'CANCELED') return;
 
+      // Step 1: Restore Stock
+      final items = await (select(db.invoiceItems)..where((i) => i.invoiceId.equals(invoiceId))).get();
       for (final item in items) {
-        // Step 2: Restore Batch Quantity (Return Logic)
         final bTable = db.batches;
         await (update(bTable)..where((t) => t.id.equals(item.batchId)))
-            .write(BatchesCompanion.custom(
-          quantity: bTable.quantity + Variable(item.qty), // Positive: Stock restored
-        ));
+            .write(BatchesCompanion.custom(quantity: bTable.quantity + Variable(item.qty)));
 
-        // Step 3: Log RETURN Movement
-        await into(db.stockMovements).insert(
-          StockMovementsCompanion(
-            type: const Value('RETURN'),
-            productId: Value(item.productId),
-            batchId: Value(item.batchId),
-            qtyChange: Value(item.qty), // Positive: Stock increased
-            referenceId: Value(invoiceId),
-          ),
-        );
+        await into(db.stockMovements).insert(StockMovementsCompanion(
+          type: const Value('RETURN'),
+          productId: Value(item.productId),
+          batchId: Value(item.batchId),
+          qtyChange: Value(item.qty),
+          referenceId: Value(invoiceId),
+        ));
       }
 
-      // Step 4: Mark Invoice as CANCELED
+      // Step 2: Reverse Debt
+      if (invoice.paymentType == 'DEBT' && invoice.customerId != null) {
+        final debt = await (select(db.debts)..where((t) => t.invoiceId.equals(invoiceId))).getSingleOrNull();
+        if (debt != null) {
+          final cTable = db.customers;
+          final unpaid = debt.amountTotal - debt.amountPaid;
+          await (update(cTable)..where((t) => t.id.equals(invoice.customerId!)))
+              .write(CustomersCompanion.custom(totalDebt: cTable.totalDebt - Variable(unpaid)));
+          
+          // Delete or mark debt as settled
+          await (delete(db.debts)..where((t) => t.id.equals(debt.id))).go();
+        }
+      }
+
+      // Step 3: Mark Invoice as CANCELED
       await (update(db.invoices)..where((i) => i.id.equals(invoiceId)))
           .write(const InvoicesCompanion(status: Value('CANCELED')));
     });
   }
+}
+
+class DetailedInvoice {
+  final Invoice invoice;
+  final Customer? customer;
+  final List<DetailedInvoiceItem> items;
+  final Debt? debt;
+  DetailedInvoice({required this.invoice, this.customer, required this.items, this.debt});
+}
+
+class DetailedInvoiceItem {
+  final InvoiceItem item;
+  final Product product;
+  final Batch batch;
+  DetailedInvoiceItem({required this.item, required this.product, required this.batch});
 }

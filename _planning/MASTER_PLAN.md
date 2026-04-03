@@ -21,7 +21,8 @@
 | **P2** | **Infrastructure** | Database Layer & Models (Drift) | ✅ COMPLETED |
 | **P2** | **Core Logic** | SalesCubit + FEFO Engine | ✅ COMPLETED |
 | **P3** | **UI/UX** | POS Sales Screen (Basic) | ✅ COMPLETED |
-| **P4** | **Inventory** | Inventory & Batch Management | 🔲 PLANNED |
+| **P4** | **Management** | Invoice Review & Cancellation (TASK_006) | 🔲 PLANNED |
+| **P5** | **Inventory** | Inventory & Batch Management | 🔲 PLANNED |
 
 ## 5. User Experience Standards
 *   **Aesthetics**: Glassmorphism, smooth animations (60fps), minimalist UI.

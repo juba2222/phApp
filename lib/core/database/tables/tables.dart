@@ -48,7 +48,8 @@ class InvoiceItems extends Table {
   IntColumn get productId => integer().references(Products, #id)();
   IntColumn get batchId => integer().references(Batches, #id)();
   IntColumn get qty => integer()();
-  RealColumn get priceAtSale => real()(); // Historical price snapshot
+  RealColumn get priceAtSale => real()(); // Historical final price
+  RealColumn get suggestedPrice => real()(); // Price at time of sale from catalog (for discount/premium audit)
 }
 
 // Stock Movement (Full Audit Trail)
